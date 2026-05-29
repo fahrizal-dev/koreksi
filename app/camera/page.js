@@ -199,7 +199,7 @@ function CameraContent() {
   }, [capturedImage])
 
   // Camera loading or error - show fallback
-  if (!capturedImage && (isLoadingCamera || error)) {
+  if (!capturedImage && !stream) {
     return (
       <div className="fixed inset-0 bg-black z-50 flex flex-col">
         <div className="p-4 bg-gradient-to-b from-black/70 to-transparent">
@@ -219,7 +219,7 @@ function CameraContent() {
         </div>
 
         <div className="flex-1 flex items-center justify-center p-6">
-          {isLoadingCamera ? (
+          {isLoadingCamera && !error ? (
             <div className="text-center">
               <div className="spinner mx-auto mb-4"></div>
               <p className="text-white text-lg mb-2">Membuka kamera...</p>
@@ -261,17 +261,6 @@ function CameraContent() {
   if (stream && !capturedImage) {
     return (
       <div className="fixed inset-0 bg-black z-50">
-        {/* Loading overlay */}
-        {isLoadingCamera && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
-            <div className="text-center">
-              <div className="spinner mx-auto mb-4"></div>
-              <p className="text-white">Membuka kamera...</p>
-              <p className="text-white/60 text-sm mt-2">Izinkan akses kamera jika diminta</p>
-            </div>
-          </div>
-        )}
-        
         {/* Video */}
         <video
           ref={videoRef}
