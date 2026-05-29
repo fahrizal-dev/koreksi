@@ -144,7 +144,7 @@ function CameraContent() {
     setOcrResult(null)
     setAiResult(null)
     setError(null)
-    startCamera()
+    // Camera will auto-start from useEffect
   }
 
   const goBack = () => {
@@ -153,10 +153,12 @@ function CameraContent() {
   }
 
   useEffect(() => {
-    startCamera()
+    if (!capturedImage) {
+      startCamera()
+    }
     return () => stopCamera()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [capturedImage])
 
   // Fullscreen camera view
   if (stream && !capturedImage) {
