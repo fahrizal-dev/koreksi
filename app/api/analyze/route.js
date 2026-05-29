@@ -9,7 +9,7 @@ export async function POST(request) {
     
     console.log('=== AI Analysis Request ===')
     console.log('Text length:', text?.length)
-    console.log('Text preview:', text?.substring(0, 100))
+    console.log('Text preview:', text?.substring(0, 200))
     console.log('Mode:', mode)
 
     if (!text || !mode) {
@@ -20,6 +20,7 @@ export async function POST(request) {
     }
 
     if (!process.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY not found in environment')
       return NextResponse.json(
         { error: 'Gemini API key not configured' },
         { status: 500 }
@@ -81,19 +82,32 @@ Berikan response dalam format JSON:
 
 Contoh status: "Sangat Benar", "Benar Sebagian", "Kurang Tepat", "Salah", "Kosong"
 
-Berikan response HANYA dalam format JSON yang valid, tanpa markdown atau teks tambahan.
+PENTING: Berikan response HANYA dalam format JSON yang valid, tanpa markdown atau teks tambahan.
 `
 
     // Call Gemini API
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+    console.log('Calling Gemini API...')
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp',
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 1024,
+      }
+    })
     
     const result = await model.generateContent(prompt)
     const response = await result.response
     const text_response = response.text()
     
+    console.log('Gemini raw response:', text_response)
+    
     // Parse JSON response (remove markdown if present)
     const jsonText = text_response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const analysisResult = JSON.parse(jsonText)
+
+    console.log('Parsed analysis result:', analysisResult)
 
     return NextResponse.json({
       score: analysisResult.score,
@@ -104,11 +118,16 @@ Berikan response HANYA dalam format JSON yang valid, tanpa markdown atau teks ta
     })
 
   } catch (error) {
-    console.error('Gemini Analysis Error:', error)
+    console.error('=== Gemini Analysis Error ===')
+    console.error('Error name:', error.name)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
+    
     return NextResponse.json(
       { 
         error: 'AI analysis failed', 
-        details: error.message 
+        details: error.message,
+        hint: 'Cek console server untuk detail error'
       },
       { status: 500 }
     )

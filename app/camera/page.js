@@ -11,6 +11,7 @@ function CameraContent() {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
+  const cropCanvasRef = useRef(null)
   
   const [stream, setStream] = useState(null)
   const [capturedImage, setCapturedImage] = useState(null)
@@ -19,6 +20,10 @@ function CameraContent() {
   const [aiResult, setAiResult] = useState(null)
   const [error, setError] = useState(null)
   const [cameraReady, setCameraReady] = useState(false)
+  const [hasFlash, setHasFlash] = useState(false)
+  const [flashOn, setFlashOn] = useState(false)
+  const [showCrop, setShowCrop] = useState(false)
+  const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 100, height: 100 })
 
   useEffect(() => {
     if (!mode) {
@@ -31,17 +36,29 @@ function CameraContent() {
       setError(null)
       console.log('Starting camera...')
       
+      // Request high quality camera with flash support
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
       })
       
       console.log('Camera granted')
+      
+      // Check if flash is available
+      const track = mediaStream.getVideoTracks()[0]
+      const capabilities = track.getCapabilities()
+      if (capabilities.torch) {
+        setHasFlash(true)
+        console.log('Flash available')
+      }
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream
         setStream(mediaStream)
         
-        // Simple: just wait for play
         videoRef.current.onloadedmetadata = async () => {
           try {
             await videoRef.current.play()
@@ -49,7 +66,7 @@ function CameraContent() {
             setCameraReady(true)
           } catch (e) {
             console.error('Play error:', e)
-            setCameraReady(true) // Show anyway
+            setCameraReady(true)
           }
         }
       }
@@ -60,11 +77,26 @@ function CameraContent() {
     }
   }
 
+  const toggleFlash = async () => {
+    if (!stream || !hasFlash) return
+    
+    try {
+      const track = stream.getVideoTracks()[0]
+      await track.applyConstraints({
+        advanced: [{ torch: !flashOn }]
+      })
+      setFlashOn(!flashOn)
+    } catch (err) {
+      console.error('Flash error:', err)
+    }
+  }
+
   const stopCamera = () => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop())
       setStream(null)
       setCameraReady(false)
+      setFlashOn(false)
     }
   }
 
@@ -79,8 +111,9 @@ function CameraContent() {
       const ctx = canvas.getContext('2d')
       ctx.drawImage(video, 0, 0)
       
-      const imageData = canvas.toDataURL('image/jpeg', 0.9)
+      const imageData = canvas.toDataURL('image/jpeg', 0.95)
       setCapturedImage(imageData)
+      setShowCrop(true)
       stopCamera()
     }
   }
@@ -91,10 +124,47 @@ function CameraContent() {
       const reader = new FileReader()
       reader.onload = (event) => {
         setCapturedImage(event.target.result)
+        setShowCrop(true)
         stopCamera()
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  const applyCrop = () => {
+    if (!capturedImage || !cropCanvasRef.current) return
+    
+    const img = new Image()
+    img.onload = () => {
+      const canvas = cropCanvasRef.current
+      const scaleX = img.width / 100
+      const scaleY = img.height / 100
+      
+      canvas.width = cropArea.width * scaleX
+      canvas.height = cropArea.height * scaleY
+      
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(
+        img,
+        cropArea.x * scaleX,
+        cropArea.y * scaleY,
+        cropArea.width * scaleX,
+        cropArea.height * scaleY,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      )
+      
+      const croppedImage = canvas.toDataURL('image/jpeg', 0.95)
+      setCapturedImage(croppedImage)
+      setShowCrop(false)
+    }
+    img.src = capturedImage
+  }
+
+  const skipCrop = () => {
+    setShowCrop(false)
   }
 
   const analyzeImage = async () => {
@@ -106,6 +176,7 @@ function CameraContent() {
     setAiResult(null)
 
     try {
+      console.log('Starting OCR...')
       const ocrResponse = await fetch('/api/ocr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -113,19 +184,22 @@ function CameraContent() {
       })
 
       if (!ocrResponse.ok) {
-        throw new Error('OCR gagal')
+        const errorData = await ocrResponse.json()
+        throw new Error(errorData.error || 'OCR gagal')
       }
 
       const ocrData = await ocrResponse.json()
+      console.log('OCR Result:', ocrData)
       setOcrResult(ocrData)
 
       const cleanText = ocrData.text?.trim() || ''
       if (!cleanText || cleanText === 'Tidak ada teks terdeteksi' || cleanText.length < 3) {
-        setError('OCR tidak dapat membaca teks. Silakan coba gambar lain.')
+        setError('OCR tidak dapat membaca teks. Silakan coba gambar lain yang lebih jelas.')
         setIsProcessing(false)
         return
       }
 
+      console.log('Starting AI analysis...')
       const aiResponse = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,15 +210,17 @@ function CameraContent() {
       })
 
       if (!aiResponse.ok) {
-        throw new Error('Analisis AI gagal')
+        const errorData = await aiResponse.json()
+        throw new Error(errorData.error || 'Analisis AI gagal')
       }
 
       const aiData = await aiResponse.json()
+      console.log('AI Result:', aiData)
       setAiResult(aiData)
 
     } catch (err) {
-      setError(err.message || 'Terjadi kesalahan saat memproses gambar')
       console.error('Analysis error:', err)
+      setError(err.message || 'Terjadi kesalahan saat memproses gambar')
     } finally {
       setIsProcessing(false)
     }
@@ -155,6 +231,7 @@ function CameraContent() {
     setOcrResult(null)
     setAiResult(null)
     setError(null)
+    setShowCrop(false)
   }
 
   const goBack = () => {
@@ -170,11 +247,55 @@ function CameraContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [capturedImage])
 
+  // Show crop interface
+  if (showCrop && capturedImage) {
+    return (
+      <div className="fixed inset-0 bg-black z-50">
+        <div className="relative w-full h-full">
+          <img
+            src={capturedImage}
+            alt="Captured"
+            className="w-full h-full object-contain"
+          />
+          
+          <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent">
+            <h3 className="text-white text-center font-semibold">
+              ✂️ Crop Gambar (Opsional)
+            </h3>
+            <p className="text-white/70 text-center text-sm mt-1">
+              Fokuskan ke area jawaban siswa
+            </p>
+          </div>
+          
+          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent">
+            <div className="flex gap-3">
+              <button
+                onClick={skipCrop}
+                className="flex-1 bg-gray-700 text-white py-4 rounded-xl font-semibold"
+              >
+                Lewati Crop
+              </button>
+              <button
+                onClick={applyCrop}
+                className="flex-1 bg-indigo-600 text-white py-4 rounded-xl font-semibold"
+              >
+                ✂️ Crop & Lanjut
+              </button>
+            </div>
+            <p className="text-white/50 text-center text-xs mt-3">
+              Fitur crop sederhana - akan ditingkatkan
+            </p>
+          </div>
+        </div>
+        <canvas ref={cropCanvasRef} className="hidden" />
+      </div>
+    )
+  }
+
   // Show camera
   if (!capturedImage) {
     return (
       <div className="fixed inset-0 bg-black z-50">
-        {/* Video - always render */}
         <video
           ref={videoRef}
           autoPlay
@@ -183,7 +304,6 @@ function CameraContent() {
           className="absolute inset-0 w-full h-full object-cover"
         />
         
-        {/* Loading overlay */}
         {!cameraReady && !error && (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="text-center">
@@ -193,7 +313,6 @@ function CameraContent() {
           </div>
         )}
         
-        {/* Error overlay */}
         {error && (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="text-center max-w-md p-6">
@@ -209,7 +328,6 @@ function CameraContent() {
           </div>
         )}
         
-        {/* Controls */}
         <div className="absolute inset-0 flex flex-col pointer-events-none">
           <div className="p-4 bg-gradient-to-b from-black/70 to-transparent pointer-events-auto">
             <div className="flex items-center justify-between">
@@ -246,7 +364,18 @@ function CameraContent() {
                 <div className="w-16 h-16 rounded-full border-4 border-black"></div>
               </button>
 
-              <div className="w-14 h-14"></div>
+              {hasFlash && (
+                <button
+                  onClick={toggleFlash}
+                  className={`rounded-full p-4 transition-colors ${
+                    flashOn ? 'bg-yellow-500' : 'bg-white/20 backdrop-blur-sm'
+                  }`}
+                >
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </button>
+              )}
             </div>
             
             <p className="text-white text-center mt-4 text-sm">
@@ -259,6 +388,7 @@ function CameraContent() {
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          capture="environment"
           onChange={handleFileUpload}
           className="hidden"
         />
@@ -323,6 +453,10 @@ function CameraContent() {
             <div className="bg-gray-900/90 rounded-xl p-6 text-center">
               <div className="spinner mx-auto mb-4"></div>
               <p className="text-white font-semibold mb-2">Sedang memproses...</p>
+              <div className="space-y-1 text-sm text-gray-400">
+                <p>📝 OCR membaca teks...</p>
+                <p>🤖 AI menganalisis jawaban...</p>
+              </div>
             </div>
           )}
 
