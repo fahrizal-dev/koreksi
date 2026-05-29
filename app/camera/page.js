@@ -227,95 +227,93 @@ function CameraContent() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-black">
+      {/* Header - Fixed */}
+      <div className="fixed top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/90 to-transparent">
+        <div className="flex items-center justify-between">
           <button
             onClick={goBack}
-            className="glass rounded-lg px-4 py-2 hover:bg-gray-700 transition-colors"
+            className="text-white bg-black/50 rounded-full px-4 py-2 hover:bg-black/70 transition-colors"
           >
             ← Kembali
           </button>
-          <div className="glass rounded-lg px-4 py-2">
-            <span className="text-sm text-gray-400">Mode: </span>
-            <span className="font-semibold text-indigo-400">
+          <div className="bg-black/50 rounded-full px-4 py-2">
+            <span className="text-white text-sm font-semibold">
               {mode === 'romawi-2' ? 'Romawi II' : 'Romawi III'}
             </span>
           </div>
         </div>
+      </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
+      {/* Main Content */}
+      <div className="pt-20 pb-6 px-4">
+        {capturedImage && (
           <div className="space-y-4">
-            {capturedImage && (
-              <div className="glass rounded-2xl p-6">
-                <h2 className="text-xl font-semibold mb-4">Gambar</h2>
-                
-                <div className="relative bg-black rounded-xl overflow-hidden">
-                  <img
-                    src={capturedImage}
-                    alt="Captured"
-                    className="w-full h-auto"
-                  />
-                </div>
+            {/* Foto Fullscreen */}
+            <div className="w-full">
+              <img
+                src={capturedImage}
+                alt="Captured"
+                className="w-full h-auto rounded-lg"
+              />
+            </div>
 
-                <div className="flex gap-3 mt-4">
-                  <button
-                    onClick={analyzeImage}
-                    disabled={isProcessing}
-                    className="btn-primary flex-1"
-                  >
-                    {isProcessing ? '⏳ Memproses...' : '🤖 Analisis AI'}
-                  </button>
-                  <button
-                    onClick={reset}
-                    disabled={isProcessing}
-                    className="btn-secondary"
-                  >
-                    🔄
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={analyzeImage}
+                disabled={isProcessing}
+                className="flex-1 bg-indigo-600 text-white py-4 rounded-xl font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? '⏳ Memproses...' : '🤖 Analisis AI'}
+              </button>
+              <button
+                onClick={reset}
+                disabled={isProcessing}
+                className="bg-gray-700 text-white px-6 py-4 rounded-xl font-semibold hover:bg-gray-600 transition-colors disabled:opacity-50"
+              >
+                🔄
+              </button>
+            </div>
 
+            {/* Error Display */}
             {error && (
-              <div className="glass rounded-xl p-4 border-l-4 border-red-500 animate-fade-in">
-                <p className="text-red-400">❌ {error}</p>
+              <div className="bg-red-900/50 border border-red-500 rounded-xl p-4">
+                <p className="text-red-200">❌ {error}</p>
               </div>
             )}
-          </div>
 
-          <div className="space-y-4">
+            {/* Processing Indicator */}
             {isProcessing && (
-              <div className="glass rounded-2xl p-8 text-center animate-fade-in">
+              <div className="bg-gray-900/90 rounded-xl p-6 text-center">
                 <div className="spinner mx-auto mb-4"></div>
-                <p className="text-gray-400 font-semibold mb-2">Sedang memproses gambar...</p>
-                <div className="space-y-2 text-sm text-gray-500">
-                  <p>📝 OCR membaca teks (2-5 detik)...</p>
-                  <p>🤖 AI menganalisis jawaban (5-10 detik)...</p>
+                <p className="text-white font-semibold mb-2">Sedang memproses...</p>
+                <div className="space-y-1 text-sm text-gray-400">
+                  <p>📝 OCR membaca teks...</p>
+                  <p>🤖 AI menganalisis jawaban...</p>
                 </div>
               </div>
             )}
 
+            {/* OCR Result */}
             {ocrResult && (
-              <div className="glass rounded-2xl p-6 animate-fade-in">
+              <div className="bg-gray-900/90 rounded-xl p-4">
                 <h3 className="text-lg font-semibold mb-3 text-indigo-400">
-                  📝 Hasil OCR
+                  📝 Teks Terbaca
                 </h3>
-                <div className="bg-[#1a1a1a]/50 rounded-lg p-4 max-h-48 overflow-y-auto">
+                <div className="bg-black/50 rounded-lg p-4 max-h-48 overflow-y-auto">
                   <p className="text-sm text-gray-300 whitespace-pre-wrap">
                     {ocrResult.text || 'Tidak ada teks terdeteksi'}
                   </p>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Confidence: {ocrResult.confidence}%
-                </p>
               </div>
             )}
 
+            {/* AI Result */}
             {aiResult && (
-              <div className="glass rounded-2xl p-6 animate-fade-in">
+              <div className="bg-gray-900/90 rounded-xl p-4">
                 <h3 className="text-lg font-semibold mb-4 text-indigo-400">
-                  🤖 Hasil Analisis AI
+                  🤖 Hasil Penilaian
                 </h3>
                 
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-6 mb-4 text-center">
@@ -324,17 +322,17 @@ function CameraContent() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="bg-[#1a1a1a]/50 rounded-lg p-4">
-                    <p className="text-xs text-gray-500 mb-1">Status Jawaban</p>
+                  <div className="bg-black/50 rounded-lg p-4">
+                    <p className="text-xs text-gray-400 mb-1">Status</p>
                     <p className="font-semibold text-white">{aiResult.status}</p>
                   </div>
 
-                  <div className="bg-[#1a1a1a]/50 rounded-lg p-4">
-                    <p className="text-xs text-gray-500 mb-1">Tingkat Kecocokan</p>
+                  <div className="bg-black/50 rounded-lg p-4">
+                    <p className="text-xs text-gray-400 mb-2">Kecocokan</p>
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 bg-gray-700 rounded-full h-2 overflow-hidden">
+                      <div className="flex-1 bg-gray-700 rounded-full h-2">
                         <div
-                          className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-500"
+                          className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500"
                           style={{ width: `${aiResult.accuracy}%` }}
                         />
                       </div>
@@ -342,27 +340,15 @@ function CameraContent() {
                     </div>
                   </div>
 
-                  <div className="bg-[#1a1a1a]/50 rounded-lg p-4">
-                    <p className="text-xs text-gray-500 mb-2">Penjelasan AI</p>
+                  <div className="bg-black/50 rounded-lg p-4">
+                    <p className="text-xs text-gray-400 mb-2">Penjelasan</p>
                     <p className="text-sm text-gray-300">{aiResult.explanation}</p>
                   </div>
                 </div>
               </div>
             )}
-
-            {!capturedImage && !isProcessing && (
-              <div className="glass rounded-xl p-6 animate-fade-in">
-                <h3 className="font-semibold mb-3 text-indigo-400">💡 Tips:</h3>
-                <ul className="space-y-2 text-sm text-gray-300">
-                  <li>• Pastikan pencahayaan cukup</li>
-                  <li>• Foto soal dan jawaban jelas</li>
-                  <li>• Hindari bayangan pada kertas</li>
-                  <li>• Tulisan harus terbaca</li>
-                </ul>
-              </div>
-            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
