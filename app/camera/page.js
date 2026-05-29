@@ -19,6 +19,7 @@ function CameraContent() {
   const [aiResult, setAiResult] = useState(null)
   const [error, setError] = useState(null)
   const [isCameraActive, setIsCameraActive] = useState(false)
+  const [isLoadingCamera, setIsLoadingCamera] = useState(true)
 
   useEffect(() => {
     if (!mode) {
@@ -28,6 +29,9 @@ function CameraContent() {
 
   const startCamera = async () => {
     try {
+      setIsLoadingCamera(true)
+      setError(null)
+      
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'environment',
@@ -35,13 +39,21 @@ function CameraContent() {
           height: { ideal: 1080 }
         }
       })
+      
       setStream(mediaStream)
+      
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play()
+          setIsCameraActive(true)
+          setIsLoadingCamera(false)
+        }
       }
-      setIsCameraActive(true)
-      setError(null)
+      
     } catch (err) {
+      setIsLoadingCamera(false)
       setError('Tidak dapat mengakses kamera. Pastikan izin kamera diaktifkan.')
       console.error('Camera error:', err)
     }
@@ -164,13 +176,26 @@ function CameraContent() {
   if (stream && !capturedImage) {
     return (
       <div className="fixed inset-0 bg-black z-50">
+        {/* Loading overlay */}
+        {isLoadingCamera && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
+            <div className="text-center">
+              <div className="spinner mx-auto mb-4"></div>
+              <p className="text-white">Membuka kamera...</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Video */}
         <video
           ref={videoRef}
           autoPlay
           playsInline
+          muted
           className="absolute inset-0 w-full h-full object-cover"
         />
         
+        {/* Controls */}
         <div className="absolute inset-0 flex flex-col">
           <div className="p-4 bg-gradient-to-b from-black/70 to-transparent">
             <div className="flex items-center justify-between">
@@ -201,7 +226,7 @@ function CameraContent() {
 
               <button
                 onClick={capturePhoto}
-                disabled={!stream}
+                disabled={!stream || isLoadingCamera}
                 className="bg-white rounded-full p-2 hover:bg-gray-200 transition-all transform hover:scale-105 disabled:opacity-50"
               >
                 <div className="w-16 h-16 rounded-full border-4 border-black"></div>
