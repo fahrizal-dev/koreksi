@@ -68,6 +68,7 @@ function CameraContent() {
       
       const imageData = canvas.toDataURL('image/jpeg', 0.9)
       setCapturedImage(imageData)
+      setIsCameraActive(false)
       stopCamera()
     }
   }
@@ -78,6 +79,7 @@ function CameraContent() {
       const reader = new FileReader()
       reader.onload = (event) => {
         setCapturedImage(event.target.result)
+        setIsCameraActive(false)
         stopCamera()
       }
       reader.readAsDataURL(file)
@@ -157,7 +159,7 @@ function CameraContent() {
   }, [])
 
   // Fullscreen camera view
-  if (isCameraActive && !capturedImage) {
+  if (stream && !capturedImage) {
     return (
       <div className="fixed inset-0 bg-black z-50">
         <video
