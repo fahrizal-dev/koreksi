@@ -47,7 +47,16 @@ function CameraContent() {
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream
+        
+        // Set timeout untuk fallback
+        const timeout = setTimeout(() => {
+          console.log('Video loading timeout, forcing ready state')
+          setIsCameraActive(true)
+          setIsLoadingCamera(false)
+        }, 3000)
+        
         videoRef.current.onloadedmetadata = () => {
+          clearTimeout(timeout)
           console.log('Video metadata loaded')
           videoRef.current.play().then(() => {
             console.log('Video playing')
@@ -55,8 +64,9 @@ function CameraContent() {
             setIsLoadingCamera(false)
           }).catch(err => {
             console.error('Video play error:', err)
+            // Even if play fails, show the video
+            setIsCameraActive(true)
             setIsLoadingCamera(false)
-            setError('Gagal memutar video kamera')
           })
         }
       }
@@ -65,7 +75,6 @@ function CameraContent() {
       console.error('Camera error:', err)
       setIsLoadingCamera(false)
       
-      // Show user-friendly error
       if (err.name === 'NotAllowedError') {
         setError('Izin kamera ditolak. Silakan izinkan akses kamera di pengaturan browser.')
       } else if (err.name === 'NotFoundError') {
