@@ -32,6 +32,8 @@ function CameraContent() {
       setIsLoadingCamera(true)
       setError(null)
       
+      console.log('Requesting camera access...')
+      
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'environment',
@@ -40,22 +42,37 @@ function CameraContent() {
         }
       })
       
+      console.log('Camera access granted')
       setStream(mediaStream)
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream
-        // Wait for video to be ready
         videoRef.current.onloadedmetadata = () => {
-          videoRef.current.play()
-          setIsCameraActive(true)
-          setIsLoadingCamera(false)
+          console.log('Video metadata loaded')
+          videoRef.current.play().then(() => {
+            console.log('Video playing')
+            setIsCameraActive(true)
+            setIsLoadingCamera(false)
+          }).catch(err => {
+            console.error('Video play error:', err)
+            setIsLoadingCamera(false)
+            setError('Gagal memutar video kamera')
+          })
         }
       }
       
     } catch (err) {
-      setIsLoadingCamera(false)
-      setError('Tidak dapat mengakses kamera. Pastikan izin kamera diaktifkan.')
       console.error('Camera error:', err)
+      setIsLoadingCamera(false)
+      
+      // Show user-friendly error
+      if (err.name === 'NotAllowedError') {
+        setError('Izin kamera ditolak. Silakan izinkan akses kamera di pengaturan browser.')
+      } else if (err.name === 'NotFoundError') {
+        setError('Kamera tidak ditemukan. Gunakan tombol Upload untuk memilih foto.')
+      } else {
+        setError('Tidak dapat mengakses kamera. Gunakan tombol Upload sebagai alternatif.')
+      }
     }
   }
 
@@ -172,6 +189,65 @@ function CameraContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [capturedImage])
 
+  // Camera loading or error - show fallback
+  if (!capturedImage && (isLoadingCamera || error)) {
+    return (
+      <div className="fixed inset-0 bg-black z-50 flex flex-col">
+        <div className="p-4 bg-gradient-to-b from-black/70 to-transparent">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={goBack}
+              className="text-white bg-black/50 rounded-full px-4 py-2"
+            >
+              ← Kembali
+            </button>
+            <div className="bg-black/50 rounded-full px-4 py-2">
+              <span className="text-white text-sm font-semibold">
+                {mode === 'romawi-2' ? 'Romawi II' : 'Romawi III'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center p-6">
+          {isLoadingCamera ? (
+            <div className="text-center">
+              <div className="spinner mx-auto mb-4"></div>
+              <p className="text-white text-lg mb-2">Membuka kamera...</p>
+              <p className="text-white/60 text-sm">Izinkan akses kamera jika diminta</p>
+            </div>
+          ) : error ? (
+            <div className="text-center max-w-md">
+              <div className="text-6xl mb-4">📷</div>
+              <p className="text-white text-lg mb-4">{error}</p>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-indigo-600 text-white px-8 py-4 rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
+              >
+                📁 Pilih Foto dari Galeri
+              </button>
+              <button
+                onClick={startCamera}
+                className="mt-3 bg-gray-700 text-white px-8 py-4 rounded-xl font-semibold hover:bg-gray-600 transition-colors block w-full"
+              >
+                🔄 Coba Lagi
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+      </div>
+    )
+  }
+
   // Fullscreen camera view
   if (stream && !capturedImage) {
     return (
@@ -182,6 +258,7 @@ function CameraContent() {
             <div className="text-center">
               <div className="spinner mx-auto mb-4"></div>
               <p className="text-white">Membuka kamera...</p>
+              <p className="text-white/60 text-sm mt-2">Izinkan akses kamera jika diminta</p>
             </div>
           </div>
         )}
