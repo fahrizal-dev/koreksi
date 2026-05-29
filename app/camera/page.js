@@ -234,6 +234,7 @@ function CameraContent() {
   useEffect(() => {
     startCamera()
     return () => stopCamera()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

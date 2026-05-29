@@ -109,7 +109,7 @@ export default function Home() {
           <h3 className="font-semibold mb-3 text-indigo-400">Cara Menggunakan:</h3>
           <ol className="space-y-2 text-gray-300 text-sm">
             <li>1. Pilih mode penilaian (Romawi II atau III)</li>
-            <li>2. Klik "Mulai Koreksi"</li>
+            <li>2. Klik &quot;Mulai Koreksi&quot;</li>
             <li>3. Foto soal dan jawaban siswa</li>
             <li>4. AI akan membaca dan menilai otomatis</li>
             <li>5. Lihat hasil penilaian langsung</li>
