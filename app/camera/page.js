@@ -25,6 +25,17 @@ function CameraContent() {
     if (!mode) {
       router.push('/')
     }
+    
+    // Check HTTPS requirement
+    if (typeof window !== 'undefined') {
+      const isSecure = window.location.protocol === 'https:' || 
+                       window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1'
+      
+      if (!isSecure) {
+        console.warn('Camera requires HTTPS or localhost')
+      }
+    }
   }, [mode, router])
 
   const startCamera = async () => {
@@ -34,6 +45,11 @@ function CameraContent() {
       
       console.log('Requesting camera access...')
       
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Browser tidak mendukung akses kamera')
+      }
+      
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: 'environment',
@@ -42,45 +58,56 @@ function CameraContent() {
         }
       })
       
-      console.log('Camera access granted')
-      setStream(mediaStream)
+      console.log('Camera access granted', mediaStream)
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream
+        setStream(mediaStream)
         
-        // Set timeout untuk fallback
-        const timeout = setTimeout(() => {
-          console.log('Video loading timeout, forcing ready state')
-          setIsCameraActive(true)
-          setIsLoadingCamera(false)
-        }, 3000)
-        
+        // Wait for video to be ready
         videoRef.current.onloadedmetadata = () => {
-          clearTimeout(timeout)
           console.log('Video metadata loaded')
-          videoRef.current.play().then(() => {
-            console.log('Video playing')
-            setIsCameraActive(true)
-            setIsLoadingCamera(false)
-          }).catch(err => {
-            console.error('Video play error:', err)
-            // Even if play fails, show the video
-            setIsCameraActive(true)
-            setIsLoadingCamera(false)
-          })
+          videoRef.current.play()
+            .then(() => {
+              console.log('Video playing successfully')
+              setIsCameraActive(true)
+              setIsLoadingCamera(false)
+            })
+            .catch(err => {
+              console.error('Video play error:', err)
+              setIsCameraActive(true)
+              setIsLoadingCamera(false)
+            })
         }
+        
+        // Fallback timeout
+        setTimeout(() => {
+          if (!isCameraActive) {
+            console.log('Forcing camera active state')
+            setIsCameraActive(true)
+            setIsLoadingCamera(false)
+          }
+        }, 5000)
+      } else {
+        setStream(mediaStream)
+        setIsCameraActive(true)
+        setIsLoadingCamera(false)
       }
       
     } catch (err) {
       console.error('Camera error:', err)
       setIsLoadingCamera(false)
       
-      if (err.name === 'NotAllowedError') {
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setError('Izin kamera ditolak. Silakan izinkan akses kamera di pengaturan browser.')
-      } else if (err.name === 'NotFoundError') {
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
         setError('Kamera tidak ditemukan. Gunakan tombol Upload untuk memilih foto.')
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setError('Kamera sedang digunakan aplikasi lain. Tutup aplikasi lain dan coba lagi.')
+      } else if (err.message.includes('tidak mendukung')) {
+        setError('Browser tidak mendukung akses kamera. Gunakan Chrome, Firefox, atau Safari terbaru.')
       } else {
-        setError('Tidak dapat mengakses kamera. Gunakan tombol Upload sebagai alternatif.')
+        setError('Tidak dapat mengakses kamera. Pastikan Anda menggunakan HTTPS atau localhost.')
       }
     }
   }
@@ -258,7 +285,7 @@ function CameraContent() {
   }
 
   // Fullscreen camera view
-  if (stream && !capturedImage) {
+  if (isCameraActive && stream && !capturedImage) {
     return (
       <div className="fixed inset-0 bg-black z-50">
         {/* Video */}
@@ -268,6 +295,7 @@ function CameraContent() {
           playsInline
           muted
           className="absolute inset-0 w-full h-full object-cover"
+          style={{ transform: 'scaleX(1)' }}
         />
         
         {/* Controls */}
@@ -301,7 +329,7 @@ function CameraContent() {
 
               <button
                 onClick={capturePhoto}
-                disabled={!stream || isLoadingCamera}
+                disabled={!stream}
                 className="bg-white rounded-full p-2 hover:bg-gray-200 transition-all transform hover:scale-105 disabled:opacity-50"
               >
                 <div className="w-16 h-16 rounded-full border-4 border-black"></div>

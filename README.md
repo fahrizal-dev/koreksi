@@ -22,12 +22,35 @@ npm run dev
 ```
 Buka: http://localhost:3000
 
-## � Cara Pakai
+## 📱 Cara Pakai
 
 1. Pilih mode penilaian (Romawi II atau III)
 2. Foto atau upload gambar soal + jawaban
 3. Klik "Analisis AI"
 4. Lihat hasil penilaian
+
+## 📷 Troubleshooting Kamera
+
+Jika kamera tidak muncul:
+
+1. **Pastikan menggunakan HTTPS atau localhost**
+   - Development: `http://localhost:3000` ✅
+   - Production: `https://domain-anda.com` ✅
+   - HTTP biasa: ❌ (browser akan blokir)
+
+2. **Izinkan akses kamera di browser**
+   - Klik ikon gembok di address bar
+   - Pilih "Site settings" → Camera → Allow
+   - Refresh halaman
+
+3. **Tutup aplikasi lain yang pakai kamera**
+   - Zoom, Teams, Skype, dll
+   - Tab browser lain
+
+4. **Gunakan alternatif Upload**
+   - Klik tombol 📁 untuk upload foto dari galeri
+
+Lihat [TROUBLESHOOTING-KAMERA.md](./TROUBLESHOOTING-KAMERA.md) untuk panduan lengkap.
 
 ## 🌐 Deploy ke Vercel
 
